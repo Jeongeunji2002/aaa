@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "oracle"
+  url      = env("DATABASE_URL")
+}
+
+// 사용자 모델
+model User {
+  id        String   @id @default(cuid())
+  userId    String   @unique // 로그인용 아이디
+  password  String?  // 일반 로그인용 (소셜 로그인 시 null)
+  name      String
+  email     String?  @unique
+  provider  String?  // 소셜 로그인 제공자 (naver, google, kakao 등)
+  providerId String? // 소셜 로그인 제공자의 사용자 ID
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 관계
+  boards        Board[]
+  refreshTokens RefreshToken[]
+
+  @@map("USERS")
+}
+
+// 게시글 모델
+model Board {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  category  String   // NOTICE, FREE, QNA
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 관계
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("BOARDS")
+}
+
+// Refresh Token 모델
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // 관계
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("REFRESH_TOKENS")
+}
