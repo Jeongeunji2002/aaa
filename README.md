@@ -135,14 +135,6 @@ project-root/
   - localStorage를 통한 토큰 관리
   - 자동 로그인 (토큰 복원)
 
-#### 소셜 로그인 (OAuth 2.0)
-- ✅ **지원 플랫폼**
-  - 🟢 네이버 (Naver)
-  - 🔵 구글 (Google)
-  - 🟡 카카오 (Kakao)
-  - 🟣 디스코드 (Discord)
-  - 🔷 트위터 (Twitter / X)
-
 - ✅ **OAuth 기능**
   - Authorization Code 플로우
   - State 파라미터로 CSRF 방지
