@@ -90,7 +90,6 @@ Response: {"success":true,"data":{"content":[...],"totalElements":1}}
 - **로그인**: `POST /api/auth/login`
 - **게시글 목록**: `GET /api/boards`
 - **게시글 작성**: `POST /api/boards`
-- **소셜 로그인**: `POST /api/social/login`
 
 ---
 
@@ -120,7 +119,6 @@ services:
 ### **✅ 완성된 기능들**
 - **인증 시스템**: 회원가입, 로그인, JWT 토큰
 - **게시판 시스템**: CRUD, 파일 업로드, 페이지네이션
-- **소셜 로그인**: 5개 제공자 지원
 - **보안**: HttpOnly Cookie, CSRF, 파일 검증
 - **UI/UX**: 반응형 디자인, 사용자 친화적 인터페이스
 

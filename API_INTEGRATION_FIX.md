@@ -157,7 +157,6 @@ app.post('/api/boards', upload.single('file'), (req, res) => {
 - **로그아웃**: `POST /api/auth/logout`
 - **게시글 목록**: `GET /api/boards`
 - **게시글 작성**: `POST /api/boards` (multipart/form-data 지원)
-- **소셜 로그인**: `POST /api/social/login`
 
 ### **🔧 수정된 부분**
 - **Mock 서버**: multipart/form-data 처리 추가

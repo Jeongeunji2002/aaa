@@ -101,7 +101,6 @@ AccessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c2VyXzE3NjE0MT
 ### **1. mock-server.js**
 - JWT 라이브러리 추가
 - 실제 JWT 토큰 생성 로직 구현
-- 로그인, 토큰 갱신, 소셜 로그인 API 모두 수정
 
 ### **2. lib/utils/tokenRefresh.ts**
 - 토큰 갱신 스케줄러 간격 조정 (1분 → 5분)
