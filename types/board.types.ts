@@ -10,7 +10,10 @@ export interface Board {
   imageUrl?: string;
   createdAt: string;
   updatedAt: string;
-  author?: string;
+  author?: {
+    userId: string;
+    name: string;
+  };
 }
 
 export interface CreateBoardData {

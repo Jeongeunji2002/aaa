@@ -1,6 +1,6 @@
 // JWT 토큰 갱신 유틸리티
 
-import { getAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken } from './cookie';
+import { getAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken, setUserInfo } from './cookie';
 import { apiClient } from '@/lib/api/axios';
 
 interface TokenRefreshResponse {
@@ -17,8 +17,8 @@ export const isTokenExpired = (token: string): boolean => {
     const payload = JSON.parse(atob(token.split('.')[1]));
     const currentTime = Math.floor(Date.now() / 1000);
     
-    // 만료 시간이 현재 시간보다 5분 이내면 갱신 필요
-    return payload.exp - currentTime < 300; // 5분
+    // 만료 시간이 현재 시간보다 10분 이내면 갱신 필요
+    return payload.exp - currentTime < 600; // 10분
   } catch {
     return true; // 토큰 파싱 실패 시 만료된 것으로 간주
   }
@@ -49,6 +49,24 @@ export const refreshAccessToken = async (): Promise<boolean> => {
       setRefreshToken(newRefreshToken);
     }
 
+    // 갱신 직후 사용자 정보 동기화 (쿠키/상태 업데이트)
+    try {
+      const meRes = await apiClient.get('/auth/me');
+      const me = (meRes as any).data?.data || (meRes as any).data || {};
+      const userId = typeof me.userId === 'string' ? me.userId.trim() : '';
+      const name = typeof me.name === 'string' ? me.name.trim() : userId;
+      if (userId) {
+        const normalized = { userId, name };
+        setUserInfo(normalized);
+        if (typeof window !== 'undefined') {
+          try {
+            const mod = await import('@/store/authStore');
+            mod.useAuthStore.setState({ user: normalized, token: accessToken });
+          } catch {}
+        }
+      }
+    } catch {}
+
     console.log('✅ 토큰 갱신 성공');
     return true;
 
@@ -68,7 +86,7 @@ export const refreshAccessToken = async (): Promise<boolean> => {
  * 자동 토큰 갱신 스케줄러
  */
 export const startTokenRefreshScheduler = () => {
-  // 1분마다 토큰 만료 확인
+  // 5분마다 토큰 만료 확인 (빈도 감소)
   const interval = setInterval(async () => {
     const token = getAuthToken();
     
@@ -81,7 +99,7 @@ export const startTokenRefreshScheduler = () => {
         clearInterval(interval);
       }
     }
-  }, 60000); // 1분
+  }, 300000); // 5분
 
   return interval;
 };

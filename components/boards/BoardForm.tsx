@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'react-hot-toast';
 import { categoryOptions } from '@/lib/utils';
+import { toAssetUrl } from '@/lib/utils/url';
 import type { BoardCategory } from '@/types';
 
 const boardSchema = z.object({
@@ -206,7 +207,7 @@ export default function BoardForm({
             <p className="text-sm font-medium text-gray-700 mb-2">미리보기</p>
             <div className="relative w-full max-w-md">
               <img
-                src={previewUrl}
+                src={previewUrl.startsWith('data:') ? previewUrl : (toAssetUrl(previewUrl) || '')}
                 alt="미리보기"
                 className="w-full h-auto rounded-lg border border-gray-300"
               />

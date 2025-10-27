@@ -73,6 +73,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // 정적 파일 서빙 (업로드된 이미지)
 app.use('/uploads', express.static('uploads'));
+// 레거시 호스트 경로(프로젝트 루트 uploads)를 추가로 지원
+app.use('/uploads', express.static('uploads-legacy'));
 
 // API 라우트
 app.use('/api/auth', loginLimiter, authRoutes);

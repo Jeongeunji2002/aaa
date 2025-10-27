@@ -48,9 +48,8 @@ export const socialConfigs: Record<SocialProvider, SocialConfig> = {
   },
 };
 
-// OAuth URL 생성
-export const generateOAuthUrl = (provider: SocialProvider): string => {
-  const config = socialConfigs[provider];
+// OAuth URL 생성 (백엔드 API 호출)
+export const generateOAuthUrl = async (provider: SocialProvider): Promise<string> => {
   const state = Math.random().toString(36).substring(7);
   
   // localStorage에 state 저장 (CSRF 방지)
@@ -58,15 +57,29 @@ export const generateOAuthUrl = (provider: SocialProvider): string => {
     localStorage.setItem(`oauth_state_${provider}`, state);
   }
   
-  const params = new URLSearchParams({
-    client_id: config.clientId,
-    redirect_uri: config.redirectUri,
-    response_type: 'code',
-    scope: config.scope,
-    state,
-  });
-  
-  return `${config.authUrl}?${params.toString()}`;
+  try {
+    // 백엔드 API에서 OAuth URL 생성
+    const response = await fetch(`/api/social/auth/${provider}?state=${state}`);
+    const data = await response.json();
+    
+    if (response.ok && data.authUrl) {
+      return data.authUrl;
+    } else {
+      throw new Error(data.message || 'OAuth URL 생성 실패');
+    }
+  } catch (error) {
+    console.error(`Failed to generate OAuth URL for ${provider}:`, error);
+    // 백엔드 API 실패 시 기본 URL 반환 (개발용)
+    const config = socialConfigs[provider];
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      redirect_uri: config.redirectUri,
+      response_type: 'code',
+      scope: config.scope,
+      state,
+    });
+    return `${config.authUrl}?${params.toString()}`;
+  }
 };
 
 // 소셜 플랫폼 정보

@@ -32,6 +32,12 @@ export default function EditBoardPage() {
     try {
       setIsLoading(true);
       const data = await getBoardDetail(boardId);
+      // 소유자 검증: 계정 주인과 게시글의 유저값이 같지 않으면 접근 차단
+      if (user && data?.author?.userId && user.userId !== data.author.userId) {
+        toast.error('수정 권한이 없습니다.');
+        router.push(`/boards/${boardId}`);
+        return;
+      }
       setBoard(data);
     } catch (error: any) {
       console.error('Failed to fetch board:', error);

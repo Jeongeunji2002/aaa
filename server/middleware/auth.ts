@@ -28,17 +28,18 @@ export const authenticateToken = async (
       });
     }
 
-    // JWT 토큰 검증
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    
+    const issuer = process.env.JWT_ISSUER || 'http://localhost:3001';
+    const audience = process.env.JWT_AUDIENCE || 'web';
+
+    // JWT 토큰 검증 (iss/aud 포함)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!, { issuer, audience }) as any;
+
+    const userId = decoded.sub as string;
+
     // 사용자 정보 조회
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        userId: true,
-        name: true,
-      },
+      where: { id: userId },
+      select: { id: true, userId: true, name: true },
     });
 
     if (!user) {
@@ -52,23 +53,14 @@ export const authenticateToken = async (
     next();
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(401).json({
-        success: false,
-        message: '유효하지 않은 토큰입니다.',
-      });
+      return res.status(401).json({ success: false, message: '유효하지 않은 토큰입니다.' });
     }
 
     if (error instanceof jwt.TokenExpiredError) {
-      return res.status(401).json({
-        success: false,
-        message: '토큰이 만료되었습니다.',
-      });
+      return res.status(401).json({ success: false, message: '토큰이 만료되었습니다.' });
     }
 
-    return res.status(500).json({
-      success: false,
-      message: '인증 처리 중 오류가 발생했습니다.',
-    });
+    return res.status(500).json({ success: false, message: '인증 처리 중 오류가 발생했습니다.' });
   }
 };
 
@@ -86,14 +78,15 @@ export const optionalAuth = async (
       return next(); // 토큰이 없으면 그냥 통과
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    const issuer = process.env.JWT_ISSUER || 'http://localhost:3001';
+    const audience = process.env.JWT_AUDIENCE || 'web';
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!, { issuer, audience }) as any;
+    const userId = decoded.sub as string;
+
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        userId: true,
-        name: true,
-      },
+      where: { id: userId },
+      select: { id: true, userId: true, name: true },
     });
 
     if (user) {

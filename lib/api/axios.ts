@@ -22,7 +22,14 @@ apiClient.interceptors.request.use(
   (config) => {
     // JWT 토큰 추가 (쿠키에서 가져오기)
     const token = getAuthToken();
-    if (token && config.headers) {
+
+    // 공개 GET 경로는 Authorization 생략하여 불필요한 CORS preflight 방지
+    // - /boards, /boards/:id, /boards?query...
+    const method = (config.method || 'get').toLowerCase();
+    const url = config.url || '';
+    const isPublicBoardsGet = method === 'get' && /^\/boards(\b|\/|\?)/.test(url);
+
+    if (!isPublicBoardsGet && token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     

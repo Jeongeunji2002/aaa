@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 데이터베이스
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: jeongeunji-postgres
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_DB=jeongeunji
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - jeongeunji-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 백엔드 서버
+  backend:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: jeongeunji-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:password@postgres-db:5432/jeongeunji
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-in-production
+      - JWT_ISSUER=http://localhost:3001
+      - JWT_AUDIENCE=web
+      - FRONTEND_URL=http://localhost:8080
+      # 네이버 OAuth
+      - NAVER_CLIENT_ID=W_Jt2WRm1ufszyl0yxCo
+      - NAVER_CLIENT_SECRET=VlJjS15SoE
+      # 구글 OAuth
+      - GOOGLE_CLIENT_ID=824254760225-grlgb236dqc5i75gahucjghbfqoa2rf4.apps.googleusercontent.com
+      - GOOGLE_CLIENT_SECRET=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
+      # 카카오 OAuth
+      - KAKAO_CLIENT_ID=c0aea9341ee62c811d788d26d480d994
+      - KAKAO_CLIENT_SECRET=nyMg3W7O5D59RYoesC54suAK7hQulJRo
+      # 디스코드 OAuth
+      - DISCORD_CLIENT_ID=1432070326564687902
+      - DISCORD_CLIENT_SECRET=30LC0gmcvK7iy0G-pzHlwkL8wFhttGH0
+      # 트위터 OAuth
+      - TWITTER_CLIENT_ID=HsokMIRIpOQ0p6HKwPetCxKiu
+      - TWITTER_CLIENT_SECRET=Xuwi7OpJrptHcRbwMElYeWFHhDgjbhJVMdBAZDdYnmsCJjmssZ
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    networks:
+      - jeongeunji-network
+    volumes:
+      - ./server/uploads:/app/uploads
+      - ./uploads:/app/uploads-legacy
+    restart: unless-stopped
+
+  # 프론트엔드 (선택사항)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: jeongeunji-frontend
+    ports:
+      - "8080:8080"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:3001/api
+    depends_on:
+      - backend
+    networks:
+      - jeongeunji-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  jeongeunji-network:
+    driver: bridge

@@ -43,6 +43,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
 }));
 
+// 서버에서 user_info 쿠키를 더 이상 다루지 않습니다 (프론트 전용 ui_user 사용)
+
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15분

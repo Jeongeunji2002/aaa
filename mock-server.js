@@ -1,8 +1,14 @@
 // 🚀 Mock API 서버 - 오라클 DB 없이 테스트용
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
+const jwt = require('jsonwebtoken'); // JWT 추가
 const app = express();
 const PORT = 3001;
+
+// JWT 시크릿 키
+const JWT_SECRET = 'mock-jwt-secret-key';
+const JWT_REFRESH_SECRET = 'mock-jwt-refresh-secret-key';
 
 // 미들웨어 설정
 app.use(cors({
@@ -10,6 +16,15 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Multer 설정 (파일 업로드용)
+const upload = multer({
+  storage: multer.memoryStorage(), // 메모리에 저장 (실제 파일 저장 안함)
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB 제한
+  },
+});
 
 // Mock 데이터 저장소
 let users = [];
@@ -28,6 +43,35 @@ app.get('/api/health', (req, res) => {
       refreshTokens: refreshTokens.length
     }
   });
+});
+
+// OAuth URL 생성 엔드포인트
+app.get('/api/social/auth/:provider', (req, res) => {
+  const { provider } = req.params;
+  const state = req.query.state;
+  
+  console.log(`🔗 OAuth URL 생성 요청: ${provider}, state: ${state}`);
+  
+  // Mock OAuth URL 생성
+  const mockAuthUrls = {
+    naver: `https://nid.naver.com/oauth2.0/authorize?client_id=mock_naver_client&redirect_uri=http://localhost:8080/auth/callback/naver&response_type=code&scope=name,email&state=${state}`,
+    google: `https://accounts.google.com/o/oauth2/v2/auth?client_id=mock_google_client&redirect_uri=http://localhost:8080/auth/callback/google&response_type=code&scope=openid profile email&state=${state}`,
+    kakao: `https://kauth.kakao.com/oauth/authorize?client_id=mock_kakao_client&redirect_uri=http://localhost:8080/auth/callback/kakao&response_type=code&scope=profile_nickname,account_email&state=${state}`,
+    discord: `https://discord.com/api/oauth2/authorize?client_id=mock_discord_client&redirect_uri=http://localhost:8080/auth/callback/discord&response_type=code&scope=identify email&state=${state}`,
+    twitter: `https://twitter.com/i/oauth2/authorize?client_id=mock_twitter_client&redirect_uri=http://localhost:8080/auth/callback/twitter&response_type=code&scope=tweet.read users.read&state=${state}`
+  };
+  
+  const authUrl = mockAuthUrls[provider];
+  
+  if (authUrl) {
+    res.json({ authUrl });
+  } else {
+    res.status(400).json({ 
+      success: false,
+      message: 'Invalid provider',
+      error: `Unsupported provider: ${provider}` 
+    });
+  }
 });
 
 // 회원가입 API
@@ -113,9 +157,18 @@ app.post('/api/auth/login', (req, res) => {
     });
   }
   
-  // JWT 토큰 생성 (Mock)
-  const accessToken = `mock_access_token_${Date.now()}`;
-  const refreshToken = `mock_refresh_token_${Date.now()}`;
+  // 실제 JWT 토큰 생성
+  const accessToken = jwt.sign(
+    { userId: user.id, userLoginId: user.userId },
+    JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+  
+  const refreshToken = jwt.sign(
+    { userId: user.id },
+    JWT_REFRESH_SECRET,
+    { expiresIn: '7d' }
+  );
   
   // Refresh Token 저장
   refreshTokens.push({
@@ -161,7 +214,12 @@ app.post('/api/auth/refresh', (req, res) => {
     });
   }
   
-  const newAccessToken = `mock_access_token_${Date.now()}`;
+  // 새로운 Access Token 생성
+  const newAccessToken = jwt.sign(
+    { userId: storedToken.userId, userLoginId: storedToken.userId },
+    JWT_SECRET,
+    { expiresIn: '1h' }
+  );
   
   res.json({
     success: true,
@@ -244,17 +302,50 @@ app.get('/api/boards', (req, res) => {
   });
 });
 
-// 게시글 작성 API
-app.post('/api/boards', (req, res) => {
-  console.log('✍️ 게시글 작성 요청:', req.body);
+// 게시글 작성 API (multipart/form-data 지원)
+app.post('/api/boards', upload.single('file'), (req, res) => {
+  console.log('✍️ 게시글 작성 요청 - Headers:', req.headers);
+  console.log('✍️ 게시글 작성 요청 - Body:', req.body);
+  console.log('✍️ 게시글 작성 요청 - File:', req.file);
   
-  const { title, content, category } = req.body;
+  let title, content, category;
+  
+  // multipart/form-data 처리
+  if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
+    // FormData에서 request 필드 파싱
+    if (req.body.request) {
+      try {
+        const requestData = JSON.parse(req.body.request);
+        title = requestData.title;
+        content = requestData.content;
+        category = requestData.category;
+      } catch (error) {
+        console.error('❌ request 파싱 오류:', error);
+        return res.status(400).json({
+          success: false,
+          message: '요청 데이터 형식이 올바르지 않습니다.',
+          error: error.message
+        });
+      }
+    }
+  } else {
+    // 일반 JSON 처리
+    ({ title, content, category } = req.body);
+  }
   
   if (!title || !content || !category) {
     return res.status(400).json({
       success: false,
-      message: '제목, 내용, 카테고리를 모두 입력해주세요.'
+      message: '제목, 내용, 카테고리를 모두 입력해주세요.',
+      received: { title, content, category }
     });
+  }
+  
+  // 파일 처리 (Mock)
+  let imageUrl = null;
+  if (req.file) {
+    imageUrl = `/uploads/mock_${Date.now()}_${req.file.originalname}`;
+    console.log('📁 파일 업로드됨:', req.file.originalname, 'Size:', req.file.size);
   }
   
   const newBoard = {
@@ -262,7 +353,7 @@ app.post('/api/boards', (req, res) => {
     title,
     content,
     category,
-    imageUrl: null,
+    imageUrl,
     authorId: 'mock_user_id',
     author: {
       userId: 'testuser',
@@ -313,9 +404,18 @@ app.post('/api/social/login', (req, res) => {
     users.push(user);
   }
   
-  // JWT 토큰 생성
-  const accessToken = `mock_social_access_token_${Date.now()}`;
-  const refreshToken = `mock_social_refresh_token_${Date.now()}`;
+  // 실제 JWT 토큰 생성
+  const accessToken = jwt.sign(
+    { userId: user.id, userLoginId: user.userId },
+    JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+  
+  const refreshToken = jwt.sign(
+    { userId: user.id },
+    JWT_REFRESH_SECRET,
+    { expiresIn: '7d' }
+  );
   
   refreshTokens.push({
     token: refreshToken,

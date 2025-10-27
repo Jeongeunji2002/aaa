@@ -133,18 +133,23 @@ router.post('/login', [
       return;
     }
 
-    // JWT 토큰 생성
+    // JWT 클레임 구성
+    const issuer = process.env.JWT_ISSUER || 'http://localhost:3001';
+    const audience = process.env.JWT_AUDIENCE || 'web';
+    const jti = `${user.id}:${Date.now()}`;
+
+    // Access Token (짧은 만료)
     const accessToken = jwt.sign(
-      { userId: user.id, userLoginId: user.userId },
+      { sub: user.id, preferred_username: user.userId, jti },
       process.env.JWT_SECRET!,
-      { expiresIn: '1h' }
+      { expiresIn: '30m', issuer, audience }
     );
 
-    // Refresh Token 생성
+    // Refresh Token (로테이션 대비 jti 포함)
     const refreshToken = jwt.sign(
-      { userId: user.id },
+      { sub: user.id, jti },
       process.env.JWT_REFRESH_SECRET!,
-      { expiresIn: '7d' }
+      { expiresIn: '7d', issuer, audience }
     );
 
     // Refresh Token DB 저장
@@ -186,8 +191,10 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction):
       return;
     }
 
-    // Refresh Token 검증
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!) as any;
+    // Refresh Token 검증 + iss/aud 확인
+    const issuer = process.env.JWT_ISSUER || 'http://localhost:3001';
+    const audience = process.env.JWT_AUDIENCE || 'web';
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!, { issuer, audience }) as any;
     
     // DB에서 Refresh Token 확인
     const storedToken = await prisma.refreshToken.findUnique({
@@ -203,17 +210,34 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction):
       return;
     }
 
-    // 새로운 Access Token 생성
+    // Refresh 토큰 로테이션: 기존 토큰 폐기 후 새 RT/AT 발급
+    const newJti = `${storedToken.user.id}:${Date.now()}`;
     const newAccessToken = jwt.sign(
-      { userId: storedToken.user.id, userLoginId: storedToken.user.userId },
+      { sub: storedToken.user.id, preferred_username: storedToken.user.userId, jti: newJti },
       process.env.JWT_SECRET!,
-      { expiresIn: '1h' }
+      { expiresIn: '30m', issuer, audience }
     );
+    const newRefreshToken = jwt.sign(
+      { sub: storedToken.user.id, jti: newJti },
+      process.env.JWT_REFRESH_SECRET!,
+      { expiresIn: '7d', issuer, audience }
+    );
+
+    // 기존 RT 삭제, 새 RT 저장
+    await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
+    await prisma.refreshToken.create({
+      data: {
+        token: newRefreshToken,
+        userId: storedToken.user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
 
     res.json({
       success: true,
       data: {
         accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
       },
     });
   } catch (error) {

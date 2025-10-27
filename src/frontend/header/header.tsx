@@ -47,10 +47,21 @@ export default function Header() {
                   </Link>
                   
                   <div className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg">
-                    <span className="text-sm text-gray-600">
-                      <span className="font-semibold text-gray-800">{user.name}</span>님
-                    </span>
-                    <span className="text-xs text-gray-500">({user.userId})</span>
+                    {(() => {
+                      const displayName = (user?.name || user?.userId || '').trim();
+                      const displayId = (user?.userId || '').trim();
+                      if (!displayName) return null;
+                      return (
+                        <>
+                          <span className="text-sm text-gray-600">
+                            <span className="font-semibold text-gray-800">{displayName}</span>님
+                          </span>
+                          {displayId && displayId !== displayName && (
+                            <span className="text-xs text-gray-500">({displayId})</span>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                   
                   <button
@@ -84,10 +95,21 @@ export default function Header() {
         {/* 모바일용 사용자 정보 */}
         {user && (
           <div className="sm:hidden mt-3 px-4 py-2 bg-gray-100 rounded-lg text-center">
-            <span className="text-sm text-gray-600">
-              <span className="font-semibold text-gray-800">{user.name}</span>님
-            </span>
-            <span className="text-xs text-gray-500 ml-1">({user.userId})</span>
+            {(() => {
+              const displayName = (user?.name || user?.userId || '').trim();
+              const displayId = (user?.userId || '').trim();
+              if (!displayName) return null;
+              return (
+                <>
+                  <span className="text-sm text-gray-600">
+                    <span className="font-semibold text-gray-800">{displayName}</span>님
+                  </span>
+                  {displayId && displayId !== displayName && (
+                    <span className="text-xs text-gray-500 ml-1">({displayId})</span>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
       </div>

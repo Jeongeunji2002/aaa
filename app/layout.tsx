@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from 'react-hot-toast';
 import "./globals.css";
+import ClientBootstraps from './providers';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +29,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* 디버그 트레이서 활성화 등 클라이언트 부트스트랩 */}
+        {/* @ts-expect-error Server Component boundary */}
+        <ClientBootstraps />
         {children}
         <Toaster 
           position="top-right"
@@ -45,7 +49,7 @@ export default function RootLayout({
               },
             },
             error: {
-              duration: 4000,
+              duration: 10000,
               iconTheme: {
                 primary: '#EF4444',
                 secondary: '#fff',

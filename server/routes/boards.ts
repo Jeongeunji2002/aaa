@@ -3,6 +3,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { body, validationResult, query } from 'express-validator';
 import { prisma } from '../config/database';
 import { authenticateToken, optionalAuth, AuthRequest } from '../middleware/auth';
@@ -12,7 +13,15 @@ const router = express.Router();
 // 파일 업로드 설정
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    const uploadDir = 'uploads';
+    try {
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+    } catch (e) {
+      return cb(e as Error, uploadDir);
+    }
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -142,8 +151,45 @@ router.get('/:id', optionalAuth, async (req: AuthRequest, res, next) => {
   }
 });
 
+// multipart/form-data일 때만 multer 적용하도록 래퍼 미들웨어 추가
+function handleMultipartIfAny(req: Request, res: Response, next: NextFunction) {
+  const contentType = (req.headers['content-type'] || '').toLowerCase();
+  if (!contentType.includes('multipart/form-data')) {
+    (req as any).uploadedFile = null;
+    return next();
+  }
+  return (upload.any() as any)(req, res, (err: any) => {
+    if (err) return next(err);
+    try {
+      if ((req as any).body && (req as any).body.request) {
+        try {
+          const parsed = JSON.parse((req as any).body.request);
+          Object.assign((req as any).body, parsed);
+        } catch {}
+      }
+      const files = ((req as any).files as Express.Multer.File[]) || [];
+      const picked = files.find((f) => f.fieldname === 'file' || f.fieldname === 'image') || null;
+      (req as any).uploadedFile = picked;
+      next();
+    } catch (e) {
+      next(e);
+    }
+  });
+}
+
 // 게시글 작성
-router.post('/', authenticateToken, upload.single('image'), [
+// multipart/form-data 호환: request(JSON) 병합, file/image 둘 다 수용
+router.post('/', authenticateToken, handleMultipartIfAny, (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction,
+) => {
+  try {
+    next();
+  } catch (e) {
+    next(e);
+  }
+}, [
   body('title')
     .isLength({ min: 1, max: 100 })
     .withMessage('제목은 1-100자 사이여야 합니다.'),
@@ -164,8 +210,9 @@ router.post('/', authenticateToken, upload.single('image'), [
       });
     }
 
-    const { title, content, category } = req.body;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const { title, content, category } = req.body as any;
+    const uploaded = (req as any).uploadedFile as Express.Multer.File | null;
+    const imageUrl = uploaded ? `/uploads/${uploaded.filename}` : null;
 
     const board = await prisma.board.create({
       data: {
@@ -196,7 +243,17 @@ router.post('/', authenticateToken, upload.single('image'), [
 });
 
 // 게시글 수정
-router.patch('/:id', authenticateToken, upload.single('image'), [
+router.patch('/:id', authenticateToken, handleMultipartIfAny, (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction,
+) => {
+  try {
+    next();
+  } catch (e) {
+    next(e);
+  }
+}, [
   body('title')
     .optional()
     .isLength({ min: 1, max: 100 })
@@ -252,7 +309,8 @@ router.patch('/:id', authenticateToken, upload.single('image'), [
     if (req.body.title) updateData.title = req.body.title;
     if (req.body.content) updateData.content = req.body.content;
     if (req.body.category) updateData.category = req.body.category;
-    if (req.file) updateData.imageUrl = `/uploads/${req.file.filename}`;
+    const uploaded = (req as any).uploadedFile as Express.Multer.File | null;
+    if (uploaded) updateData.imageUrl = `/uploads/${uploaded.filename}`;
 
     const board = await prisma.board.update({
       where: { id },
@@ -266,6 +324,18 @@ router.patch('/:id', authenticateToken, upload.single('image'), [
         },
       },
     });
+
+    // 새 파일 업로드 시 기존 파일 삭제
+    try {
+      if ((req as any).uploadedFile && (existingBoard as any).imageUrl) {
+        const oldPath = (existingBoard as any).imageUrl as string;
+        const fileName = path.basename(oldPath);
+        const absPath = path.join('uploads', fileName);
+        if (fs.existsSync(absPath)) {
+          fs.unlinkSync(absPath);
+        }
+      }
+    } catch {}
 
     res.json({
       success: true,
@@ -311,6 +381,18 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res, next) => 
     await prisma.board.delete({
       where: { id },
     });
+
+    // 이미지 파일 삭제
+    try {
+      if ((existingBoard as any).imageUrl) {
+        const oldPath = (existingBoard as any).imageUrl as string;
+        const fileName = path.basename(oldPath);
+        const absPath = path.join('uploads', fileName);
+        if (fs.existsSync(absPath)) {
+          fs.unlinkSync(absPath);
+        }
+      }
+    } catch {}
 
     res.json({
       success: true,

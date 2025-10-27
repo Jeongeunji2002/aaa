@@ -322,7 +322,7 @@ curl http://localhost:3001/api/boards
 ### 2. **소셜 로그인 실제 연동**
 - 각 제공자에서 클라이언트 ID/Secret 발급
 - OAuth 콜백 URL 설정
-- 실제 API 연동 구현
+- 실제  구현
 
 ### 3. **프로덕션 배포**
 - 환경 변수 보안 설정

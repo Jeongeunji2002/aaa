@@ -9,6 +9,7 @@ import { getCategoryLabel, formatDate } from '@/lib/utils';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import type { Board } from '@/types';
 import Image from 'next/image';
+import { toAssetUrl } from '@/lib/utils/url';
 
 export default function BoardDetailPage() {
   const params = useParams();
@@ -69,7 +70,13 @@ export default function BoardDetailPage() {
       router.push('/boards');
     } catch (error: any) {
       console.error('Failed to delete board:', error);
-      toast.error('게시글 삭제에 실패했습니다.');
+      if (error.response?.status === 403) {
+        toast.error('삭제 권한이 없습니다.');
+      } else if (error.response?.status === 404) {
+        toast.error('게시글을 찾을 수 없습니다.');
+      } else {
+        toast.error('게시글 삭제에 실패했습니다.');
+      }
       setIsDeleting(false);
       setShowDeleteModal(false);
     }
@@ -131,19 +138,36 @@ export default function BoardDetailPage() {
                   <span className="text-gray-400">(수정됨)</span>
                 )}
               </div>
+              <div className="text-right">
+                <span>
+                  작성자: <b>{board.author?.name || board.author?.userId || '작성자 미상'}</b>
+                  {board.author?.userId && board.author?.name ? ` (${board.author.userId})` : ''}
+                </span>
+              </div>
             </div>
           </div>
           
           {/* 이미지 */}
           {board.imageUrl && (
             <div className="mb-6">
-              <div className="relative w-full" style={{ minHeight: '300px' }}>
+              <div className="relative w-full bg-gray-50 rounded-lg overflow-hidden" style={{ minHeight: '300px' }}>
+                {/* skeleton */}
+                <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100" />
+                {/* image */}
                 <img
-                  src={board.imageUrl}
+                  src={toAssetUrl(board.imageUrl) || ''}
                   alt={board.title}
-                  className="w-full h-auto rounded-lg"
+                  loading="lazy"
+                  className="relative w-full h-auto rounded-lg"
+                  onLoad={(e) => {
+                    const sk = (e.target as HTMLImageElement).previousElementSibling as HTMLElement | null;
+                    if (sk) sk.style.display = 'none';
+                  }}
                   onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
+                    const el = e.target as HTMLImageElement;
+                    el.style.display = 'none';
+                    const sk = el.previousElementSibling as HTMLElement | null;
+                    if (sk) sk.className = 'absolute inset-0 bg-gray-100 flex items-center justify-center';
                   }}
                 />
               </div>
@@ -157,21 +181,23 @@ export default function BoardDetailPage() {
             </p>
           </div>
           
-          {/* 액션 버튼 */}
-          <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-6 border-t border-gray-200">
-            <button
-              onClick={handleEdit}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition duration-200"
-            >
-              수정
-            </button>
-            <button
-              onClick={handleDeleteClick}
-              className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition duration-200"
-            >
-              삭제
-            </button>
-          </div>
+          {/* 액션 버튼 (작성자 본인만 노출) */}
+          {user && board.author && user.userId === board.author.userId && (
+            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-6 border-t border-gray-200">
+              <button
+                onClick={handleEdit}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition duration-200"
+              >
+                수정
+              </button>
+              <button
+                onClick={handleDeleteClick}
+                className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition duration-200"
+              >
+                삭제
+              </button>
+            </div>
+          )}
         </div>
       </div>
       

@@ -30,25 +30,21 @@ export const createBoard = async (
   data: CreateBoardData,
   file?: File
 ): Promise<Board> => {
-  const formData = new FormData();
-  
-  // request 데이터를 JSON 문자열로 변환하여 추가
-  const requestBlob = new Blob([JSON.stringify(data)], {
-    type: 'application/json',
-  });
-  formData.append('request', requestBlob);
-  
-  // 파일이 있으면 추가
-  if (file) {
-    formData.append('file', file);
+  // 파일 없으면 JSON으로 전송 (멀터 미사용 경로)
+  if (!file) {
+    const response = await apiClient.post('/boards', data);
+    return response.data.data;
   }
-  
+
+  // 파일 있을 때만 multipart 전송
+  const formData = new FormData();
+  formData.append('request', JSON.stringify(data));
+  formData.append('image', file);
+
   const response = await apiClient.post('/boards', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return response.data.data; // 백엔드 응답 구조에 맞게 수정
+  return response.data.data;
 };
 
 // 게시글 수정
@@ -57,25 +53,19 @@ export const updateBoard = async (
   data: UpdateBoardData,
   file?: File
 ): Promise<Board> => {
-  const formData = new FormData();
-  
-  // request 데이터를 JSON 문자열로 변환하여 추가
-  const requestBlob = new Blob([JSON.stringify(data)], {
-    type: 'application/json',
-  });
-  formData.append('request', requestBlob);
-  
-  // 파일이 있으면 추가
-  if (file) {
-    formData.append('file', file);
+  if (!file) {
+    const response = await apiClient.patch(`/boards/${id}`, data);
+    return response.data.data;
   }
-  
+
+  const formData = new FormData();
+  formData.append('request', JSON.stringify(data));
+  formData.append('image', file);
+
   const response = await apiClient.patch(`/boards/${id}`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return response.data.data; // 백엔드 응답 구조에 맞게 수정
+  return response.data.data;
 };
 
 // 게시글 삭제

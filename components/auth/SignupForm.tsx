@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
-import SocialLoginButtons from './SocialLoginButtons';
 
 // 회원가입 폼 스키마
 const signupSchema = z.object({
@@ -84,6 +83,7 @@ export default function SignupForm() {
               {...register('userId')}
               type="text"
               id="userId"
+              autoComplete="username"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
               placeholder="아이디를 입력하세요"
             />
@@ -101,6 +101,7 @@ export default function SignupForm() {
               {...register('password')}
               type="password"
               id="password"
+              autoComplete="new-password"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
               placeholder="비밀번호를 입력하세요"
             />
@@ -118,6 +119,7 @@ export default function SignupForm() {
               {...register('passwordConfirm')}
               type="password"
               id="passwordConfirm"
+              autoComplete="new-password"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
               placeholder="비밀번호를 다시 입력하세요"
             />
@@ -135,6 +137,7 @@ export default function SignupForm() {
               {...register('name')}
               type="text"
               id="name"
+              autoComplete="name"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
               placeholder="이름을 입력하세요"
             />
@@ -152,6 +155,7 @@ export default function SignupForm() {
               {...register('email')}
               type="email"
               id="email"
+              autoComplete="email"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
               placeholder="이메일을 입력하세요 (선택)"
             />
@@ -182,11 +186,6 @@ export default function SignupForm() {
             </Link>
           </p>
         </div>
-      </div>
-      
-      {/* 소셜 로그인 */}
-      <div className="w-full max-w-md mx-auto px-6 mt-6">
-        <SocialLoginButtons />
       </div>
     </div>
   );

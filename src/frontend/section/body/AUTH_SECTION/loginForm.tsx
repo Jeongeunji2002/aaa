@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
-import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 
 // 로그인 폼 스키마
 const loginSchema = z.object({
@@ -63,6 +62,7 @@ export default function LoginForm() {
               {...register('userId')}
               type="text"
               id="userId"
+              autoComplete="username"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
               placeholder="아이디를 입력하세요"
             />
@@ -80,6 +80,7 @@ export default function LoginForm() {
               {...register('password')}
               type="password"
               id="password"
+              autoComplete="current-password"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
               placeholder="비밀번호를 입력하세요"
             />
@@ -110,11 +111,6 @@ export default function LoginForm() {
             </Link>
           </p>
         </div>
-      </div>
-      
-      {/* 소셜 로그인 */}
-      <div className="w-full max-w-md mx-auto px-6 mt-6">
-        <SocialLoginButtons />
       </div>
     </div>
   );
