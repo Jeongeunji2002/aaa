@@ -72,7 +72,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:3001/api
+      - NEXT_PUBLIC_API_URL=http://localhost:3001/api
     depends_on:
       - backend
     networks:

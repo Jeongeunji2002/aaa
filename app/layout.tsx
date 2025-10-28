@@ -30,7 +30,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {/* 디버그 트레이서 활성화 등 클라이언트 부트스트랩 */}
-        {/* @ts-expect-error Server Component boundary */}
         <ClientBootstraps />
         {children}
         <Toaster 
